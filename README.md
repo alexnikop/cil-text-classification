@@ -1,4 +1,4 @@
-# CLl-text-classification
+# CIL-text-classification
 The code contains common practises, widely used in nlp tasks, that lead to a well performing sentiment analysis system, for ETH CIL Text classification challenge.
 
 # Preprocessing
