@@ -1,8 +1,5 @@
-from tensorflow.keras.layers import Dense, Input, LSTM, Bidirectional, Embedding, Dropout
-from tensorflow.keras.layers import Activation, Layer, Softmax, Multiply, Lambda, Attention, BatchNormalization
-from tensorflow.keras.models import Model, load_model
+from tensorflow.keras.models import load_model
 from tensorflow.keras.losses import CategoricalCrossentropy, categorical_crossentropy
-import tensorflow.keras.backend as K
 import tensorflow as tf
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
@@ -10,9 +7,9 @@ import pickle
 import numpy as np
 import random
 import argparse
+from sentiment_model import create_model
 
 # randomly shuffle x, y lists
-
 def shuffle_lists(X, y):
 
     shuff_list = list(zip(X, y))
@@ -28,79 +25,8 @@ def process_batch_sentences(batch, word_index):
         map(lambda w: word_index.get(w, word_index["unkid"]), d)), batch))
     return np.array(batch)
 
-# build and return model
-
-
-def create_model(embeddings, hparams, vocab_size):
-
-    word_dim = 300
-    rnn_dim, dense_1_dim, dense_2_dim, drop_rate = hparams
-
-    embeddings = embeddings[:vocab_size]
-
-    input_seq = Input(shape=(None,))
-
-    # replace word ids with word2vec embeddings
-    embs = Embedding(input_dim=vocab_size, output_dim=word_dim,
-                     weights=[embeddings], trainable=False)(input_seq)
-
-    # ---------- first path -------------
-
-    x1 = Bidirectional(LSTM(rnn_dim, return_sequences=True,
-                            recurrent_dropout=drop_rate), merge_mode='concat')(embs)
-
-    # bidirectional LSTM to parse sentence from both directions
-    x1 = Bidirectional(LSTM(rnn_dim, return_sequences=True,
-                            recurrent_dropout=drop_rate), merge_mode='concat')(x1)
-
-    # attention mechanism
-    attention = Dense(1)(x1)
-    attention = Softmax(axis=1)(attention)
-    context = Multiply()([attention, x1])
-    p1 = Lambda(lambda x: K.sum(x, axis=1))(context)
-
-    # ---------- second path ------------
-
-    x2 = Dense(1024)(embs)
-    x2 = Activation('relu')(x2)
-    attention2 = Dense(1)(x2)
-    attention2 = Softmax(axis=1)(attention2)
-    context2 = Multiply()([attention2, p1])
-    p2 = Lambda(lambda x: K.sum(x, axis=1))(context2)
-
-    x = tf.concat([p1, p2], -1)
-
-    if drop_rate > 0:
-        x = Dropout(drop_rate)(x)
-
-    x = Dense(dense_1_dim, kernel_initializer='he_normal')(x)
-    x = Activation('relu')(x)
-
-    if drop_rate > 0:
-        x = Dropout(drop_rate)(x)
-
-    x = Dense(dense_2_dim, kernel_initializer='he_normal')(x)
-    x = Activation('relu')(x)
-
-    if drop_rate > 0:
-        x = Dropout(drop_rate)(x)
-
-    x = Dense(2, kernel_initializer='he_normal')(x)
-    x = Activation('softmax')(x)
-
-    model = Model(input_seq, x)
-
-    # weight decay example
-    regularizer = tf.keras.regularizers.l2(0.001)
-    for layer in model.layers:
-        if isinstance(layer, Dense) or isinstance(layer, LSTM):
-            model.add_loss(lambda layer=layer: regularizer(layer.kernel))
-
-    return model
 
 # segmentate data by sentence length
-
-
 def segmentate_data(x_data, y_data):
 
     x_dict = dict()
@@ -118,8 +44,6 @@ def segmentate_data(x_data, y_data):
     return x_dict, y_dict
 
 # get dataset, vocab data and embeddings
-
-
 def get_data(vocab_size, step):
 
     # load embeddings
@@ -173,8 +97,6 @@ def get_data(vocab_size, step):
     return final_data, embeddings, word_index,
 
 # train model
-
-
 def train_model(model, train_data, val_data, word_index, batch_size, epochs=100, learning_rate=0.001):
 
     val_batch_size = batch_size
@@ -208,10 +130,11 @@ def train_model(model, train_data, val_data, word_index, batch_size, epochs=100,
     @tf.function(
         input_signature=[tf.TensorSpec(shape=(None, None), dtype=tf.float32),
                          tf.TensorSpec(shape=(None, 2), dtype=tf.float32)])
+
     def train_step(batch_X, batch_y):
         with tf.GradientTape() as tape:
             predictions = model(batch_X, training=True)
-            loss = loss_fn(batch_y, predictions)  # + tf.add_n(model.losses)
+            loss = loss_fn(batch_y, predictions)  + tf.add_n(model.losses)
 
         gradients = tape.gradient(loss, model.trainable_variables)
         optimizer.apply_gradients(zip(gradients, model.trainable_variables))
@@ -220,9 +143,10 @@ def train_model(model, train_data, val_data, word_index, batch_size, epochs=100,
     @tf.function(
         input_signature=[tf.TensorSpec(shape=(None, None), dtype=tf.float32),
                          tf.TensorSpec(shape=(None, 2), dtype=tf.float32)])
+
     def test_step(batch_X, batch_y):
         predictions = model(batch_X, training=False)
-        loss = loss_fn(batch_y, predictions)  # +  tf.add_n(model.losses)
+        loss = loss_fn(batch_y, predictions) +  tf.add_n(model.losses)
         return loss, predictions
 
     for epoch in range(epochs):
@@ -340,7 +264,6 @@ def train_model(model, train_data, val_data, word_index, batch_size, epochs=100,
 
 
 # predict and create submission
-
 def predict_model(model, predict_data, predict_indices, word_index, batch_size):
 
     with open('submission.csv', 'w') as f:
@@ -392,6 +315,8 @@ if __name__ == '__main__':
                         default=1024, help='dense 1 dimension')
     parser.add_argument('--dense2_dim', type=int,
                         default=256, help='dense 2 dimension')
+    parser.add_argument('-lr', '--learning_rate',
+                    default=0.001, help='learning rate')
     parser.add_argument('--drop_rate', default=0.2, help='dropout rate')
 
     args = parser.parse_args()
@@ -416,7 +341,7 @@ if __name__ == '__main__':
         # model.load_weights('sentiment_model_init.h5')
         train_data, val_data = data
         train_model(model, train_data, val_data, word_index,
-                    batch_size, epochs=100, learning_rate=0.001)
+                    batch_size, epochs=100, learning_rate=args.learning_rate)
     elif step == 'test':
         test_data, test_indices = data
         model = load_model('sentiment_model.h5')
