@@ -1,5 +1,5 @@
 # cil-text-classification
-The code contains common practises, widely used in nlp tasks, that lead to a well performing sentiment analysis system. 
+The code contains common practises, widely used in nlp tasks, that lead to a well performing sentiment analysis system, for ETH CIL Text classification challenge.
 
 # preprocessing
 The preprocessing step aims to reduce noise in the training and test data. It also groups training data in sentence-label pairs when exporting the final dataset.
