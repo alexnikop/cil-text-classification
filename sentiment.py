@@ -1,4 +1,5 @@
-from tensorflow.keras.layers import Dense, Input, LSTM, Bidirectional, Embedding, Dropout, Activation, Layer, Softmax, Multiply, Lambda, Attention, BatchNormalization
+from tensorflow.keras.layers import Dense, Input, LSTM, Bidirectional, Embedding, Dropout
+from tensorflow.keras.layers import Activation, Layer, Softmax, Multiply, Lambda, Attention, BatchNormalization
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.losses import CategoricalCrossentropy, categorical_crossentropy
 import tensorflow.keras.backend as K
@@ -11,7 +12,6 @@ import random
 import argparse
 
 # randomly shuffle x, y lists
-
 
 def shuffle_lists(X, y):
 
