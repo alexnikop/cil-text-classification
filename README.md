@@ -12,4 +12,4 @@ The model implements a dual-path architecture that uses both LSTMs and self impl
 * Glove 300d vectors are used to initialize word embeddings. Good results can be obtained by randomly intiailizing and training the ebedding matrix too.
 
 # run code
-In order to run the code you neeed to set the required data paths on top of process_data.py. sentiment.py file can be executed after process_data.py has created the required files (embeddings.pickle, final_train_dataset.txt, final_test_dataset.txt, word_index.txt)
+In order to run the code you need to set the required data paths on top of process_data.py. Then, sentiment.py can be executed, after process_data.py has created the required files (embeddings.pickle, final_train_dataset.txt, final_test_dataset.txt, word_index.txt)
